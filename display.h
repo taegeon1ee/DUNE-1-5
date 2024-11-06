@@ -7,7 +7,8 @@
 
 #ifndef _DISPLAY_H_
 #define _DISPLAY_H_
-
+#include <vector>
+#include <string>
 #include "common.h"
 
 typedef struct {
@@ -34,6 +35,9 @@ void display(
 	vector<UNIT>& layer1,
 	CURSOR cursor
 );
-
+void draw_system_message();
+void log_system_message(string message);
+void draw_status_message();
+void log_status_message(string message);
 #endif
 

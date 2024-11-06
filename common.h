@@ -7,6 +7,7 @@
 #include <conio.h>
 #include <assert.h>
 #include <vector>
+#include<string>
 
 /* ================= system parameters =================== */
 #define TICK 10		// time unit(ms)
@@ -36,6 +37,7 @@ typedef enum {
 	k_quit,
 	k_undef, // 정의되지 않은 키 입력
 	k_space, //스페이스 바 입력
+	k_esc, // esc 입력
 } KEY;
 
 
@@ -76,28 +78,30 @@ typedef struct {
 
 // 대강 만들어 봤음. 기능 추가하면서 각자 수정할 것
 typedef struct {
-	POSITION pos;		// 현재 위치(position)
+	POSITION pos;        // 현재 위치(position)
 	int size;
-	char repr;			// 화면에 표시할 문자(representation)
+	char repr;            // 화면에 표시할 문자(representation)
 	unsigned short color;
 	int cost;
 	int health;
 	char enemy; // 0 : 아군, 1 : 적군, 2 : 중립
+	string status_msg;
 } BUILDING;
 
 typedef struct {
-	POSITION pos;		// 현재 위치(position)
-	POSITION dest;		// 목적지(destination)
-	char repr;			// 화면에 표시할 문자(representation)
+	POSITION pos;        // 현재 위치(position)
+	POSITION dest;        // 목적지(destination)
+	char repr;            // 화면에 표시할 문자(representation)
 	unsigned short color;
-	int speed;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
-	int next_move_time;	// 다음에 움직일 시간
+	int speed;    // '몇 ms마다 한 칸 움직이는지'를 뜻함
 	int cost;
 	int population;
+	char enemy;
 	int damage;
-	int damage_time;
+	int attack_speed;
 	int health;
 	int fov;
+	string status_msg;
 } UNIT;
 
 typedef enum Color {

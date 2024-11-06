@@ -54,17 +54,31 @@ void draw_border(POSITION pos, int width, int height) {
 		back_buffer[pos.y + height - 1][pos.x + i] = { '-', Color::White };
 	}
 };
-
 void refresh() {
 	for (int i = 0; i < CONSOLE_HEIGHT; i++) {
 		for (int j = 0; j < CONSOLE_WIDTH; j++) {
-			if ((front_buffer[i][j].Chr != back_buffer[i][j].Chr) || (front_buffer[i][j].Color != back_buffer[i][j].Color)) {
-				console_goto(j, i);
-				console_setcolor(back_buffer[i][j].Color);
-				printf("%c", back_buffer[i][j].Chr);
+			if (back_buffer[i][j].Chr >> 7) {
+				if ((front_buffer[i][j].Chr != back_buffer[i][j].Chr) || (front_buffer[i][j].Color != back_buffer[i][j].Color) || (front_buffer[i][j + 1].Chr != back_buffer[i][j + 1].Chr)) {
+					console_goto(j, i);
+					console_setcolor(back_buffer[i][j].Color);
+					printf("%c%c", back_buffer[i][j].Chr, back_buffer[i][j + 1].Chr);
+					front_buffer[i][j].Chr = back_buffer[i][j].Chr;
+					front_buffer[i][j].Color = back_buffer[i][j].Color;
+					front_buffer[i][j + 1].Chr = back_buffer[i][j + 1].Chr;
+					front_buffer[i][j + 1].Color = back_buffer[i][j + 1].Color;
+
+				}
+				j++;
 			}
-			front_buffer[i][j].Chr = back_buffer[i][j].Chr;
-			front_buffer[i][j].Color = back_buffer[i][j].Color;
+			else {
+				if ((front_buffer[i][j].Chr != back_buffer[i][j].Chr) || (front_buffer[i][j].Color != back_buffer[i][j].Color)) {
+					console_goto(j, i);
+					console_setcolor(back_buffer[i][j].Color);
+					printf("%c", back_buffer[i][j].Chr);
+					front_buffer[i][j].Chr = back_buffer[i][j].Chr;
+					front_buffer[i][j].Color = back_buffer[i][j].Color;
+				}
+			}
 		}
 	}
 };
@@ -88,6 +102,18 @@ void initialize_display() {
 	}
 }
 bool initialized = false;
+
+
+void draw_resource(RESOURCE resource) {
+	char buf[CONSOLE_WIDTH] = { 0 };
+	snprintf(buf, CONSOLE_WIDTH, "spice = %d/%d, population=%d/%d",
+		resource.spice, resource.spice_max,
+		resource.population, resource.population_max
+	);
+	for (int i = 0; i < CONSOLE_WIDTH; i++) {
+		back_buffer[RESOURCE_POS.y][RESOURCE_POS.x + i] = { buf[i], Color::White };
+	}
+}
 void display(
 	RESOURCE resource,
 	vector<BUILDING>& layer0,
@@ -100,6 +126,8 @@ void display(
 	draw_border(SYSMSG_POS, SYSMSG_WIDTH, SYSMSG_HEIGHT);
 	draw_border(COMMAND_POS, COMMAND_WIDTH, COMMAND_HEIGHT);
 	draw_map(layer0, layer1);
+	draw_system_message();
+	draw_status_message();
 	refresh();
 	draw_cursor(cursor);
 	//display_system_message()
@@ -107,18 +135,29 @@ void display(
 	// display_commands()
 	// ...
 }
-
-void draw_resource(RESOURCE resource) {
-	char buf[CONSOLE_WIDTH] = { 0 };
-	snprintf(buf, CONSOLE_WIDTH, "spice = %d/%d, population=%d/%d",
-		resource.spice, resource.spice_max,
-		resource.population, resource.population_max
-	);
-	for (int i = 0; i < CONSOLE_WIDTH; i++) {
-		back_buffer[RESOURCE_POS.y][RESOURCE_POS.x + i] = { buf[i], Color::White };
+vector<string> system_messages;
+void draw_system_message() {
+	int system_messages_len = system_messages.size();
+	for (int i = 0; i < system_messages.size(); i++) {
+		for (int j = 0; j < system_messages[system_messages_len - i - 1].length() && j < SYSMSG_WIDTH - 2; j++) {
+			unsigned short color;
+			if (i == 0) {
+				color = Color::White;
+			}
+			else {
+				color = Color::DarkGray;
+			}
+			back_buffer[SYSMSG_POS.y + SYSMSG_HEIGHT - i - 2][SYSMSG_POS.x + j + 1] = { system_messages[system_messages_len - i - 1][j], color };
+		}
 	}
 }
 
+void log_system_message(string message) {
+	system_messages.push_back(message);
+	if (system_messages.size() > SYSMSG_HEIGHT - 2) {
+		system_messages.erase(system_messages.begin());
+	}
+}
 void draw_map(vector<BUILDING>& layer0, vector<UNIT>& layer1) {
 	for (int i = 0; i < layer0.size(); i++) {
 		BUILDING building = layer0[i];
@@ -145,4 +184,40 @@ void draw_cursor(CURSOR cursor) {
 	console_setcolor(Color::Gray << 4);
 	printf("%c", front_buffer[curr_y][curr_x].Chr);
 	console_goto(curr_x, curr_y);
+}
+string status_messaage;
+void draw_status_message() {                //상태창 메시지 출력
+	for (int i = 0; i < STATUS_HEIGHT - 2; i++) {
+		for (int j = 0; j < STATUS_WIDTH - 2; j++) {
+			back_buffer[STATUS_POS.y + i + 1][STATUS_POS.x + j + 1].Chr = ' ';
+		}
+	}
+	int l = 1, k = 1;
+	for (int j = 0; j < status_messaage.length(); j++ & k++) {
+		if (status_messaage[j] >> 7) {
+			if (k > STATUS_WIDTH - 3) {
+				k = 1;
+				l++;
+			}
+			back_buffer[STATUS_POS.y + l][STATUS_POS.x + k].Chr = status_messaage[j];
+			back_buffer[STATUS_POS.y + l][STATUS_POS.x + k + 1].Chr = status_messaage[j + 1];
+			k++;
+			j++;
+		}
+		else {
+			if (status_messaage[j] == '\n') {
+				k = 0;
+				l++;
+				continue;
+			}
+			if (k > STATUS_WIDTH - 2) {
+				k = 1;
+				l++;
+			}
+			back_buffer[STATUS_POS.y + l][STATUS_POS.x + k].Chr = status_messaage[j];
+		}
+	}
+}
+void log_status_message(string message) {
+	status_messaage = message;
 }
