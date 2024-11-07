@@ -39,5 +39,7 @@ void draw_system_message();
 void log_system_message(string message);
 void draw_status_message();
 void log_status_message(string message);
+void draw_console_message();
+void log_console_message(string message);
 #endif
 

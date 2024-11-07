@@ -128,6 +128,7 @@ void display(
 	draw_map(layer0, layer1);
 	draw_system_message();
 	draw_status_message();
+	draw_console_message();
 	refresh();
 	draw_cursor(cursor);
 	//display_system_message()
@@ -220,4 +221,40 @@ void draw_status_message() {                //상태창 메시지 출력
 }
 void log_status_message(string message) {
 	status_messaage = message;
+}
+string console_messaage;
+void draw_console_message() {                //상태창 메시지 출력
+	for (int i = 0; i < COMMAND_HEIGHT - 2; i++) {
+		for (int j = 0; j < COMMAND_WIDTH - 2; j++) {
+			back_buffer[COMMAND_POS.y + i + 1][COMMAND_POS.x + j + 1].Chr = ' ';
+		}
+	}
+	int l = 1, k = 1;
+	for (int j = 0; j < console_messaage.length(); j++ & k++) {
+		if (console_messaage[j] >> 7) {
+			if (k > COMMAND_WIDTH - 3) {
+				k = 1;
+				l++;
+			}
+			back_buffer[COMMAND_POS.y + l][COMMAND_POS.x + k].Chr = console_messaage[j];
+			back_buffer[COMMAND_POS.y + l][COMMAND_POS.x + k + 1].Chr = console_messaage[j + 1];
+			k++;
+			j++;
+		}
+		else {
+			if (console_messaage[j] == '\n') {
+				k = 0;
+				l++;
+				continue;
+			}
+			if (k > COMMAND_WIDTH - 2) {
+				k = 1;
+				l++;
+			}
+			back_buffer[COMMAND_POS.y + l][COMMAND_POS.x + k].Chr = console_messaage[j];
+		}
+	}
+}
+void log_console_message(string message) {
+	console_messaage = message;
 }

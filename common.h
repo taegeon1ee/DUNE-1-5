@@ -38,6 +38,7 @@ typedef enum {
 	k_undef, // 정의되지 않은 키 입력
 	k_space, //스페이스 바 입력
 	k_esc, // esc 입력
+	k_h,
 } KEY;
 
 
@@ -86,6 +87,8 @@ typedef struct {
 	int health;
 	char enemy; // 0 : 아군, 1 : 적군, 2 : 중립
 	string status_msg;
+	string console_msg;
+	string system_msg;
 } BUILDING;
 
 typedef struct {
@@ -102,6 +105,7 @@ typedef struct {
 	int health;
 	int fov;
 	string status_msg;
+	string console_msg;
 } UNIT;
 
 typedef enum Color {

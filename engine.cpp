@@ -17,10 +17,10 @@ CURSOR cursor = { {1, 1}, {1, 1} };
 
 /* ================= game data =================== */
 RESOURCE resource = {
+	20,
+	100,
 	0,
 	0,
-	0,
-	0
 };
 
 vector<BUILDING> buildings;
@@ -83,6 +83,8 @@ int find_closest_unit(int x, int y, bool perfect_match) {
 	}
 }
 
+void on_command_Base(KEY key);
+
 /* ================= main() =================== */
 int main(void) {
 	RECT r;
@@ -97,8 +99,17 @@ int main(void) {
 	initialize_display();
 	display(resource, buildings, units, cursor);
 
+	BUILDING selected_building;
+	selected_building.repr = 0;
+	UNIT selected_unit;
+	selected_unit.repr = 0;
+
 	while (1) {
 		KEY key = get_key();
+		if ((selected_building.repr == 'B') && (selected_building.enemy == 0)) {
+			on_command_Base(key);
+		}
+
 		cursor.previous.x = cursor.current.x;
 		cursor.previous.y = cursor.current.y;
 		int building_index, unit_index;
@@ -153,17 +164,26 @@ int main(void) {
 			if (building_index >= 0) {
 				BUILDING current_building = buildings[building_index];
 				log_status_message(current_building.status_msg);
+				selected_building = current_building;
+				log_console_message(current_building.console_msg);
 			}
 			else if (unit_index >= 0) {
 				UNIT current_unit = units[unit_index];
 				log_status_message(current_unit.status_msg);
+				selected_unit = current_unit;
+				log_console_message(current_unit.console_msg);
 			}
 			else {
 				log_status_message("적막함만이 맴돌고 있는 사막이다.");
+				selected_building = {};
+				selected_unit = {};
+				selected_building.repr = 0;
+				selected_unit.repr = 0;
 			}
 			break;
 		case k_esc:
 			log_status_message("");
+			log_console_message("");
 			break;
 		case k_quit:
 			outro();
@@ -184,6 +204,7 @@ int main(void) {
 		sys_clock += 10;
 	}
 }
+
 BUILDING make_Base(int x, int y, bool is_enemy) {
 	BUILDING Building;
 	Building.pos = { x, y };
@@ -192,11 +213,13 @@ BUILDING make_Base(int x, int y, bool is_enemy) {
 		Building.color = (Color::Red << 4) + Color::White;
 		Building.enemy = 1;
 		Building.status_msg = "하코넨의 베이스이다.";
+		Building.console_msg = "";
 	}
 	else {
 		Building.color = (Color::Blue << 4) + Color::White;
 		Building.enemy = 0;
 		Building.status_msg = "아트레이디스의 베이스이다.";
+		Building.console_msg = "H : 하베스터 생성";
 	}
 	Building.repr = 'B';
 	Building.cost = 0;
@@ -214,6 +237,7 @@ BUILDING make_Plate(int x, int y, int size) {
 	Building.cost = 1;
 	Building.health = -1;
 	Building.status_msg = "건물을 지을 수 있는 플레이트이다.";
+	Building.console_msg = "";
 	return Building;
 }
 
@@ -227,6 +251,7 @@ BUILDING make_Rock(int x, int y, int size) {
 	Building.cost = -1;
 	Building.health = -1;
 	Building.status_msg = "그냥 돌인듯 하다.";
+	Building.console_msg = "";
 	return Building;
 }
 BUILDING make_Spice(int x, int y) {
@@ -237,6 +262,7 @@ BUILDING make_Spice(int x, int y) {
 	Building.enemy = 2;
 	Building.repr = '5';
 	Building.status_msg = "우주에서 가장 귀한 물질인 스파이스이다.\n주황색의 가루같은 형태에 약간 푸른빛과 은빛이 감돈다.";
+	Building.console_msg = "";
 	return Building;
 }
 UNIT make_Sandworm(int x, int y) {
@@ -253,6 +279,7 @@ UNIT make_Sandworm(int x, int y) {
 	Unit.attack_speed = 10000;
 	Unit.damage = INT_MAX;
 	Unit.status_msg = "모래속에 사는 샌드웜이다.\n바위나 돌을 비롯해 입속으로 들어오는\n모든 것을 갈아버릴 수 있다.";
+	Unit.console_msg = "";
 	return Unit;
 }
 UNIT make_Haverster(int x, int y, bool is_enemy) {
@@ -263,11 +290,14 @@ UNIT make_Haverster(int x, int y, bool is_enemy) {
 		Unit.color = (Color::Red << 4) + Color::White;
 		Unit.enemy = 1;
 		Unit.status_msg = "하코넨의 하베스터이다.";
+		Unit.console_msg = "";
+
 	}
 	else {
 		Unit.color = (Color::Blue << 4) + Color::White;
 		Unit.enemy = 0;
 		Unit.status_msg = "아트레이디스의 하베스터이다.";
+		Unit.console_msg = " H: Harvest(수확), M: move(이동)";
 	}
 	Unit.repr = 'H';
 	Unit.cost = 5;
@@ -293,6 +323,30 @@ void init() {
 	units.push_back(make_Haverster(1, MAP_HEIGHT - 4, false));
 	units.push_back(make_Haverster(MAP_WIDTH - 2, 3, true));
 }
+void on_command_Base(KEY key) {
+	if (key == k_h) {
+		if (resource.spice < 5) {
+			log_system_message("Not enough spice");
+		}
+		else {
+			bool is_havester_exist[MAP_WIDTH] = { false, };
+			for (int i = 0; i < units.size(); i++) {
+				if ((units[i].repr == 'H') && (units[i].enemy == 0)) {
+					is_havester_exist[units[i].pos.x] = true;
+				}
+			}
+			for (int i = 1; i < MAP_WIDTH - 1; i++) {
+				if (is_havester_exist[i] == false) {
+					log_system_message("A new harvester ready");
+					units.push_back(make_Haverster(i, MAP_HEIGHT - 4, false));
+					resource.spice -= 5;
+					break;
+				}
+			}
+		}
+	}
+}
+
 /* ================= subfunctions =================== */
 void intro(void) {
 	system("color 0f");
