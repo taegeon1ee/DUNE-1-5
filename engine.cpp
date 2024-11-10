@@ -25,7 +25,33 @@ RESOURCE resource = {
 
 vector<BUILDING> buildings;
 vector<UNIT> units;
-
+int find_closest_unit_except(int x, int y, bool perfect_match, char exception) {
+	if (perfect_match) {
+		for (int i = 0; i < units.size(); i++) {
+			POSITION pos = units[i].pos;
+			if ((pos.x == x) && (pos.y == y) && (units[i].repr != exception)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	else {
+		vector<int> distance_square(units.size());
+		for (int i = 0; i < units.size(); i++) {
+			POSITION pos = units[i].pos;
+			distance_square[i] = (pos.x - x) * (pos.x - x) + (pos.y - y) * (pos.y - y);
+		}
+		int minimum_distance = INT_MAX;
+		int minimum_index = -1;
+		for (int i = 0; i < units.size(); i++) {
+			if ((distance_square[i] < minimum_distance) && (units[i].repr != exception)) {
+				minimum_distance = distance_square[i];
+				minimum_index = i;
+			}
+		}
+		return minimum_index;
+	}
+}
 int find_closest_building(int x, int y, bool perfect_match) {
 	if (perfect_match) {
 		for (int i = 0; i < buildings.size(); i++) {
@@ -93,7 +119,7 @@ int main(void) {
 	MoveWindow(console, r.left, r.top, 1000, 600, TRUE); //창의 크기를 가로 1000 세로 600으로
 
 	srand((unsigned int)time(NULL));
-	unsigned long click_time_up = 0, click_time_down = 0, click_time_left = 0, click_time_right = 0;
+	unsigned long click_time = 0;
 	init(); //맵 초기화
 	intro();
 	initialize_display();
@@ -113,49 +139,87 @@ int main(void) {
 		cursor.previous.x = cursor.current.x;
 		cursor.previous.y = cursor.current.y;
 		int building_index, unit_index;
+		for (int i = 0; i < units.size(); i++) {
+			if (units[i].repr == 'W') {
+				int closest_unit_index = find_closest_unit_except(units[i].pos.x, units[i].pos.y, false, 'W');
+				if (closest_unit_index > -1) {
+					units[i].dest.x = units[closest_unit_index].pos.x;      // 샌드웜이 가장 가까운 유닛에게 고정
+					units[i].dest.y = units[closest_unit_index].pos.y;
+				}
+				else {
+					units[i].dest.x = units[i].pos.x;
+					units[i].dest.y = units[i].pos.y;
+				}
+			}
+			if (units[i].repr == 'H') {
+				//하베스터 dest 설정
+			}
+			if ((sys_clock - units[i].last_moved_time) >= units[i].speed) {
+				int delta_x = units[i].pos.x - units[i].dest.x;				//이동
+				int delta_y = units[i].pos.y - units[i].dest.y;
+
+				if (abs(delta_x) >= abs(delta_y)) {
+					if (delta_x > 0) units[i].pos.x -= 1;
+					else if (delta_x < 0) units[i].pos.x += 1;
+				}
+				else {
+					if (delta_y > 0) units[i].pos.y -= 1;
+					else if (delta_y < 0) units[i].pos.y += 1;
+				}
+				units[i].last_moved_time = sys_clock;
+				if (delta_x * delta_x + delta_y * delta_y == 1) {
+					int collasped_unit_index = find_closest_unit_except(units[i].pos.x, units[i].pos.y, true, 'W');
+					if ((collasped_unit_index > -1) && (units[collasped_unit_index].repr == 'H')) {	//유닛이 이동 후 무언가와 충돌했고, 그 유닛이 하베스터라면
+						units[collasped_unit_index].destroyed = true;
+						log_system_message("하베스터가 샌드웜의 입 속으로 빨려 들어갔습니다.");
+					}
+					for (int i = units.size() - 1; i >= 0; i--) {
+						if (units[i].destroyed) {
+							units.erase(units.begin() + i);
+						}
+					}
+				}
+			}
+		}
 		switch (key) {
 		case k_up:
 			cursor.current.y -= 1;
-			log_system_message(to_string(clock() - click_time_up));
-			if ((click_time_up > 0) && (clock() - click_time_up < 200)) { //k_up이 0.2초안에 한번 더 눌릴시
+			if ((click_time > 0) && (clock() - click_time < 200)) { //k_up이 0.2초안에 한번 더 눌릴시
 				cursor.current.y -= 4;
-				click_time_up = 0;
+				click_time = 0;
 			}
 			else {
-				click_time_up = clock();
+				click_time = clock();
 			}
 			break;
 		case k_down:
 			cursor.current.y += 1;
-			log_system_message(to_string(clock() - click_time_down));
-			if ((click_time_down > 0) && (clock() - click_time_down < 200)) {
+			if ((click_time > 0) && (clock() - click_time < 200)) {
 				cursor.current.y += 4;
-				click_time_down = 0;
+				click_time = 0;
 			}
 			else {
-				click_time_down = clock();
+				click_time = clock();
 			}
 			break;
 		case k_right:
 			cursor.current.x += 1;
-			log_system_message(to_string(clock() - click_time_right));
-			if ((click_time_right > 0) && (clock() - click_time_right < 200)) {
+			if ((click_time > 0) && (clock() - click_time < 200)) {
 				cursor.current.x += 4;
-				click_time_right = 0;
+				click_time = 0;
 			}
 			else {
-				click_time_right = clock();
+				click_time = clock();
 			}
 			break;
 		case k_left:
 			cursor.current.x -= 1;
-			log_system_message(to_string(clock() - click_time_left));
-			if ((click_time_left > 0) && (clock() - click_time_left < 200)) {
+			if ((click_time > 0) && (clock() - click_time < 200)) {
 				cursor.current.x -= 4;
-				click_time_left = 0;
+				click_time = 0;
 			}
 			else {
-				click_time_left = clock();
+				click_time = clock();
 			}
 			break;
 		case k_space:
@@ -205,6 +269,7 @@ int main(void) {
 	}
 }
 
+
 BUILDING make_Base(int x, int y, bool is_enemy) {
 	BUILDING Building;
 	Building.pos = { x, y };
@@ -240,7 +305,6 @@ BUILDING make_Plate(int x, int y, int size) {
 	Building.console_msg = "";
 	return Building;
 }
-
 BUILDING make_Rock(int x, int y, int size) {
 	BUILDING Building;
 	Building.pos = { x, y };
@@ -254,13 +318,13 @@ BUILDING make_Rock(int x, int y, int size) {
 	Building.console_msg = "";
 	return Building;
 }
-BUILDING make_Spice(int x, int y) {
+BUILDING make_Spice(int x, int y, int reserves) {
 	BUILDING Building;
 	Building.pos = { x , y };
 	Building.size = 1;
 	Building.color = (Color::Yellow << 4) + Color::Black;
 	Building.enemy = 2;
-	Building.repr = '5';
+	Building.repr = '0' + reserves;
 	Building.status_msg = "우주에서 가장 귀한 물질인 스파이스이다.\n주황색의 가루같은 형태에 약간 푸른빛과 은빛이 감돈다.";
 	Building.console_msg = "";
 	return Building;
@@ -275,8 +339,10 @@ UNIT make_Sandworm(int x, int y) {
 	Unit.population = -1;
 	Unit.health = -1;
 	Unit.fov = -1;
-	Unit.speed = 2500;
+	Unit.speed = 1000;
 	Unit.attack_speed = 10000;
+	Unit.last_moved_time = 0;
+	Unit.destroyed = false;
 	Unit.damage = INT_MAX;
 	Unit.status_msg = "모래속에 사는 샌드웜이다.\n바위나 돌을 비롯해 입속으로 들어오는\n모든 것을 갈아버릴 수 있다.";
 	Unit.console_msg = "";
@@ -291,13 +357,17 @@ UNIT make_Haverster(int x, int y, bool is_enemy) {
 		Unit.enemy = 1;
 		Unit.status_msg = "하코넨의 하베스터이다.";
 		Unit.console_msg = "";
-
+		Unit.last_moved_time = 0;
+		Unit.destroyed = false;
 	}
 	else {
 		Unit.color = (Color::Blue << 4) + Color::White;
 		Unit.enemy = 0;
 		Unit.status_msg = "아트레이디스의 하베스터이다.";
 		Unit.console_msg = " H: Harvest(수확), M: move(이동)";
+		Unit.last_moved_time = 0;
+		Unit.destroyed = false;
+
 	}
 	Unit.repr = 'H';
 	Unit.cost = 5;
@@ -316,8 +386,8 @@ void init() {
 	buildings.push_back(make_Rock(30, 12, 2));
 	buildings.push_back(make_Rock(38, 5, 1));
 	buildings.push_back(make_Rock(45, 13, 1));
-	buildings.push_back(make_Spice(MAP_WIDTH - 2, 5));
-	buildings.push_back(make_Spice(1, MAP_HEIGHT - 6));
+	buildings.push_back(make_Spice(MAP_WIDTH - 2, 5, 5));
+	buildings.push_back(make_Spice(1, MAP_HEIGHT - 6, 5));
 	units.push_back(make_Sandworm(5, 3));
 	units.push_back(make_Sandworm(47, 13));
 	units.push_back(make_Haverster(1, MAP_HEIGHT - 4, false));

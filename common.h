@@ -75,7 +75,9 @@ typedef struct {
 	int population; // 현재 인구 수
 	int population_max;  // 수용 가능한 인구 수
 } RESOURCE;
-
+typedef struct {
+	double x, y;
+} POSITION_d;
 
 // 대강 만들어 봤음. 기능 추가하면서 각자 수정할 것
 typedef struct {
@@ -104,6 +106,8 @@ typedef struct {
 	int attack_speed;
 	int health;
 	int fov;
+	int last_moved_time;
+	bool destroyed;
 	string status_msg;
 	string console_msg;
 } UNIT;
