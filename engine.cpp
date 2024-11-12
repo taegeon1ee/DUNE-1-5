@@ -17,12 +17,12 @@ CURSOR cursor = { {1, 1}, {1, 1} };
 
 /* ================= game data =================== */
 RESOURCE resource = {
-	20,
-	100,
+	15,
+	50,
 	0,
 	0,
 };
-
+BUILDING make_Spice(int x, int y, int reserves);
 vector<BUILDING> buildings;
 vector<UNIT> units;
 int find_closest_unit_except(int x, int y, bool perfect_match, char exception) {
@@ -146,41 +146,87 @@ int main(void) {
 					units[i].dest.x = units[closest_unit_index].pos.x;      // 샌드웜이 가장 가까운 유닛에게 고정
 					units[i].dest.y = units[closest_unit_index].pos.y;
 				}
-				else {
-					units[i].dest.x = units[i].pos.x;
-					units[i].dest.y = units[i].pos.y;
+				else { //만약 가까운 유닛이 없으면
+					units[i].dest.x = rand() % (MAP_WIDTH - 1) + 1;      // 샌드웜의 목적지를 맵의 랜덤한 위치로
+					units[i].dest.y = rand() % (MAP_HEIGHT - 1) + 1;
 				}
 			}
 			if (units[i].repr == 'H') {
 				//하베스터 dest 설정
 			}
-			if ((sys_clock - units[i].last_moved_time) >= units[i].speed) {
-				int delta_x = units[i].pos.x - units[i].dest.x;				//이동
+			if (((sys_clock - units[i].last_moved_time) >= units[i].speed) && ((units[i].dest.x != units[i].pos.x) || (units[i].dest.y != units[i].pos.y))) {
+				int next_x = units[i].pos.x;
+				int next_y = units[i].pos.y;
+
+				int delta_x = units[i].pos.x - units[i].dest.x;            //이동
 				int delta_y = units[i].pos.y - units[i].dest.y;
 
+				vector<POSITION> other_deltas(3); //현재 이동 방향을 제외한 다른 이동 방향들을 저장(원소는 당연히 3개)
+
 				if (abs(delta_x) >= abs(delta_y)) {
-					if (delta_x > 0) units[i].pos.x -= 1;
-					else if (delta_x < 0) units[i].pos.x += 1;
+					if (delta_x > 0) {
+						next_x -= 1;
+						other_deltas[0] = { 0, 1 }; //현재 이동 방향(=(-1, 0))을 제외한 다른 방향들을 벡터에 저장
+						other_deltas[1] = { 1, 0 };
+						other_deltas[2] = { 0, -1 };
+					}
+					else if (delta_x < 0) {
+						next_x += 1;
+						other_deltas[0] = { 0, 1 };//현재 이동 방향(=(1, 0))을 제외한 다른 방향들을 벡터에 저장
+						other_deltas[1] = { -1, 0 };
+						other_deltas[2] = { 0, -1 };
+					}
 				}
 				else {
-					if (delta_y > 0) units[i].pos.y -= 1;
-					else if (delta_y < 0) units[i].pos.y += 1;
+					if (delta_y > 0) {
+						next_y -= 1;
+						other_deltas[0] = { 0, 1 };//현재 이동 방향(=(0, -1))을 제외한 다른 방향들을 벡터에 저장
+						other_deltas[1] = { 1, 0 };
+						other_deltas[2] = { -1, 0 };
+					}
+					else if (delta_y < 0) {
+						next_y += 1;
+						other_deltas[0] = { 0, -1 };//현재 이동 방향(=(0, 1))을 제외한 다른 방향들을 벡터에 저장
+						other_deltas[1] = { 1, 0 };
+						other_deltas[2] = { -1, 0 };
+					}
 				}
+
+				int unit_in_next_pos, building_in_next_pos; //내가 움직일 위치에 빌딩이나 유닛이 있는지 찾는다.
+				unit_in_next_pos = find_closest_unit(next_x, next_y, true);
+				building_in_next_pos = find_closest_building(next_x, next_y, true);
+				int index = 0;
+				random_shuffle(other_deltas.begin(), other_deltas.end()); //만약 내가 움직일 위치에 뭔가 있을 경우를 대비해서, 현재 방향 외에 다른 방향을 랜덤하게 고려하기 위해서 벡터를 랜덤하게 셔플
+
+				while ((building_in_next_pos > -1) || (unit_in_next_pos > -1)) { //만약 움직일 위치에 뭔가 있다면 다른 방향을 고려하기 시작
+					if ((units[i].repr == 'W') && (unit_in_next_pos > -1) && (units[unit_in_next_pos].repr == 'H')) { //만약 내가 샌드웜이고 다음으로 갈 위치에 하베스터가 있으면
+						units[unit_in_next_pos].destroyed = true; //하베스터를 units에서 지운다
+						break; //다른 방향을 고려하기를 그만둔다.
+					}
+					next_x = units[i].pos.x + other_deltas[index].x; //만약 하베스터 외의 유닛이나 빌딩이 있으면, next_x, next_y를 다른 랜덤한 방향으로 바꾸고
+					next_y = units[i].pos.y + other_deltas[index].y;
+					unit_in_next_pos = find_closest_unit(next_x, next_y, true); //바뀐 next_x, next_y에 유닛이나 빌딩이 있는지 찾는다.
+					building_in_next_pos = find_closest_building(next_x, next_y, true);
+					index++;
+				}
+				if (units[i].repr == 'W') {
+					int W_excrement;
+					W_excrement = rand() % 20;
+					if (W_excrement == 1) {
+						buildings.push_back(make_Spice(units[i].pos.x, units[i].pos.y, rand() % 9 + 1)); 
+					}
+				}
+				units[i].pos = { next_x, next_y }; //그리고 샌드웜을 (next_x, next_y)로 움직인다
 				units[i].last_moved_time = sys_clock;
-				if (delta_x * delta_x + delta_y * delta_y == 1) {
-					int collasped_unit_index = find_closest_unit_except(units[i].pos.x, units[i].pos.y, true, 'W');
-					if ((collasped_unit_index > -1) && (units[collasped_unit_index].repr == 'H')) {	//유닛이 이동 후 무언가와 충돌했고, 그 유닛이 하베스터라면
-						units[collasped_unit_index].destroyed = true;
-						log_system_message("하베스터가 샌드웜의 입 속으로 빨려 들어갔습니다.");
-					}
-					for (int i = units.size() - 1; i >= 0; i--) {
-						if (units[i].destroyed) {
-							units.erase(units.begin() + i);
-						}
-					}
-				}
 			}
 		}
+		for (int i = units.size() - 1; i >= 0; i--) {
+			if (units[i].destroyed) {
+				units.erase(units.begin() + i);
+				log_system_message("샌드웜이 유닛을 씹어 먹었습니다.");
+			}
+		}
+
 		switch (key) {
 		case k_up:
 			cursor.current.y -= 1;
