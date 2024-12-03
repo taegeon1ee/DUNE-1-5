@@ -1,4 +1,4 @@
-	/*
+/*
 * raw(?) I/O
 */
 #include "io.h"
@@ -16,6 +16,11 @@ KEY get_key(void) {
 	case 'h': return k_h;
 	case 32: return k_space;
 	case 27: return k_esc;
+	case 'b': return k_b;
+	case 'd': return k_d;
+	case 'g': return k_g;
+	case 's': return k_s;
+	case 'p': return k_p;
 	case 224:
 		byte = _getch();  // MSB 224가 입력 되면 1바이트 더 전달 받기
 		switch (byte) {

@@ -28,8 +28,9 @@ typedef struct {
 typedef struct {
 	POSITION previous;  // 직전 위치
 	POSITION current;   // 현재 위치
+	int prev_size;
+	int cur_size;
 } CURSOR;
-
 // 입력 가능한 키 종류.
 // 수업에서 enum은 생략했는데, 크게 어렵지 않으니 예제 검색
 typedef enum {
@@ -38,7 +39,12 @@ typedef enum {
 	k_undef, // 정의되지 않은 키 입력
 	k_space, //스페이스 바 입력
 	k_esc, // esc 입력
-	k_h,
+	k_h, // h 입력
+	k_b, // b 입력
+	k_d, // d 입력
+	k_s, // s 입력
+	k_p, // p 입력
+	k_g, // g 입력
 } KEY;
 
 

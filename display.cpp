@@ -172,18 +172,27 @@ void draw_map(vector<BUILDING>& layer0, vector<UNIT>& layer1) {
 		back_buffer[MAP_POS.y + unit.pos.y][MAP_POS.x + unit.pos.x] = { unit.repr, unit.color };
 	}
 }
-
 void draw_cursor(CURSOR cursor) {
 	int prev_x = MAP_POS.x + cursor.previous.x;
 	int prev_y = MAP_POS.y + cursor.previous.y;
 	int curr_x = MAP_POS.x + cursor.current.x;
 	int curr_y = MAP_POS.y + cursor.current.y;
-	console_goto(prev_x, prev_y);
-	console_setcolor(front_buffer[prev_y][prev_x].Color);
-	printf("%c", front_buffer[prev_y][prev_x].Chr);
-	console_goto(curr_x, curr_y);
-	console_setcolor(Color::Gray << 4);
-	printf("%c", front_buffer[curr_y][curr_x].Chr);
+	int prev_size = cursor.prev_size;
+	int cur_size = cursor.cur_size;
+	for (int i = 0; i < prev_size; i++) {
+		for (int j = 0; j < prev_size; j++) {
+			console_goto(prev_x + i, prev_y + j);
+			console_setcolor(front_buffer[prev_y + j][prev_x + i].Color);
+			printf("%c", front_buffer[prev_y + j][prev_x + i].Chr);
+		}
+	}
+	for (int i = 0; i < cur_size; i++) {
+		for (int j = 0; j < cur_size; j++) {
+			console_goto(curr_x + i, curr_y + j);
+			console_setcolor(Color::Gray << 4);
+			printf("%c", front_buffer[curr_y + j][curr_x + i].Chr);
+		}
+	}
 	console_goto(curr_x, curr_y);
 }
 string status_messaage;

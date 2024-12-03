@@ -12,9 +12,7 @@ void outro(void);
 
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
-CURSOR cursor = { {1, 1}, {1, 1} };
-
-
+CURSOR cursor = { {1, 1}, {1, 1}, 1, 1 };
 /* ================= game data =================== */
 RESOURCE resource = {
 	15,
@@ -54,7 +52,7 @@ int find_closest_unit_except(int x, int y, bool perfect_match, char exception) {
 }
 int find_closest_building(int x, int y, bool perfect_match) {
 	if (perfect_match) {
-		for (int i = 0; i < buildings.size(); i++) {
+		for (int i = buildings.size() - 1; i >= 0; i--) {
 			POSITION pos = buildings[i].pos;
 			int size = buildings[i].size;
 			if ((pos.x <= x) && (x < pos.x + size) && (pos.y <= y) && (y < pos.y + size)) {
@@ -108,9 +106,12 @@ int find_closest_unit(int x, int y, bool perfect_match) {
 		return minimum_index;
 	}
 }
-
 void on_command_Base(KEY key);
-
+BUILDING make_Plate(int x, int y, int size);
+BUILDING make_Dormitory(int x, int y, int size);
+BUILDING make_Garage(int x, int y, int size);
+BUILDING make_Barracks(int x, int y, int size);
+BUILDING make_Shelter(int x, int y, int size);
 /* ================= main() =================== */
 int main(void) {
 	RECT r;
@@ -129,13 +130,186 @@ int main(void) {
 	selected_building.repr = 0;
 	UNIT selected_unit;
 	selected_unit.repr = 0;
-
+	int click_b = 0;
+	KEY last_key = k_none;
+	bool build_mode = false;
+	log_console_message("B: Build");
 	while (1) {
 		KEY key = get_key();
 		if ((selected_building.repr == 'B') && (selected_building.enemy == 0)) {
 			on_command_Base(key);
 		}
+		if (last_key == k_b) {
+			if (key == k_p) {
+				build_mode = true;
+				cursor.cur_size = 2;
+			}
+			else if (key == k_d) {
+				build_mode = true;
+				cursor.cur_size = 2;
+			}
+			else if (key == k_g) {
+				build_mode = true;
+				cursor.cur_size = 2;
+			}
+			else if (key == k_s) {
+				build_mode = true;
+				cursor.cur_size = 2;
+			}
+			else if (key == k_b) {
+				build_mode = true;
+				cursor.cur_size = 2;
+			}
+		}
+		if ((last_key == k_p) && build_mode) {
+			if (key == k_space) {
+				bool buildable = true;
+				for (int d_x = 0; d_x < cursor.cur_size; d_x++) {
+					for (int d_y = 0; d_y < cursor.cur_size; d_y++) {
+						int result1 = find_closest_building(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						int result2 = find_closest_unit(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						if ((result1 != -1) || (result2 != -1)) {
+							buildable = false;
+						}
+					}
+				}
+				if (buildable) {
+					if (resource.spice >= 1) {
+						resource.spice -= 1;
+						buildings.push_back(make_Plate(cursor.current.x, cursor.current.y, 2));
+						log_system_message("[장판이 깔렸습니다.]");
+					}
+					else {
+						log_system_message("[스파이스가 부족합니다.]");
+					}
+				}
+				else {
+					log_system_message("[건설에 실패하였습니다.]");
+				}
+				build_mode = false;
+				cursor.cur_size = 1;
+			}
+		}
+		else if ((last_key == k_d) && build_mode) {
+			if (key == k_space) {
+				bool buildable = true;
+				for (int d_x = 0; d_x < cursor.cur_size; d_x++) {
+					for (int d_y = 0; d_y < cursor.cur_size; d_y++) {
+						int result1 = find_closest_building(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						int result2 = find_closest_unit(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						if ((result2 != -1) || !((result1 != -1) && (buildings[result1].repr == 'P'))) {
+							buildable = false;
+						}
+					}
+				}
+				if (buildable) {
+					if (resource.spice >= 2) {
+						resource.spice -= 2;
+						buildings.push_back(make_Dormitory(cursor.current.x, cursor.current.y, 2));
+						log_system_message("[숙소를 지었습니다.]");
 
+					}
+					else {
+						log_system_message("[스파이스가 부족합니다.]");
+					}
+				}
+				else {
+					log_system_message("[건설에 실패하였습니다.]");
+				}
+				build_mode = false;
+				cursor.cur_size = 1;
+			}
+		}
+		else if ((last_key == k_g) && build_mode) {
+			if (key == k_space) {
+				bool buildable = true;
+				for (int d_x = 0; d_x < cursor.cur_size; d_x++) {
+					for (int d_y = 0; d_y < cursor.cur_size; d_y++) {
+						int result1 = find_closest_building(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						int result2 = find_closest_unit(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						if ((result2 != -1) || !((result1 != -1) && (buildings[result1].repr == 'P'))) {
+							buildable = false;
+						}
+					}
+				}
+				if (buildable) {
+					if (resource.spice >= 4) {
+						resource.spice -= 4;
+						buildings.push_back(make_Garage(cursor.current.x, cursor.current.y, 2));
+						log_system_message("[창고를 지었습니다.]");
+
+					}
+					else {
+						log_system_message("[스파이스가 부족합니다.]");
+					}
+				}
+				else {
+					log_system_message("[건설에 실패하였습니다.]");
+				}
+				build_mode = false;
+				cursor.cur_size = 1;
+			}
+		}
+		else if ((last_key == k_b) && build_mode) {
+			if (key == k_space) {
+				bool buildable = true;
+				for (int d_x = 0; d_x < cursor.cur_size; d_x++) {
+					for (int d_y = 0; d_y < cursor.cur_size; d_y++) {
+						int result1 = find_closest_building(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						int result2 = find_closest_unit(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						if ((result2 != -1) || !((result1 != -1) && (buildings[result1].repr == 'P'))) {
+							buildable = false;
+						}
+					}
+				}
+				if (buildable) {
+					if (resource.spice >= 4) {
+						resource.spice -= 4;
+						buildings.push_back(make_Barracks(cursor.current.x, cursor.current.y, 2));
+						log_system_message("[병영을 건설하였습니다.]");
+
+					}
+					else {
+						log_system_message("[스파이스가 부족합니다.]");
+					}
+				}
+				else {
+					log_system_message("[건설에 실패하였습니다.]");
+				}
+				build_mode = false;
+				cursor.cur_size = 1;
+			}
+		}
+		else if ((last_key == k_s) && build_mode) {
+			if (key == k_space) {
+				bool buildable = true;
+				for (int d_x = 0; d_x < cursor.cur_size; d_x++) {
+					for (int d_y = 0; d_y < cursor.cur_size; d_y++) {
+						int result1 = find_closest_building(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						int result2 = find_closest_unit(cursor.current.x + d_x, cursor.current.y + d_y, true);
+						if ((result2 != -1) || !((result1 != -1) && (buildings[result1].repr == 'P'))) {
+							buildable = false;
+						}
+					}
+				}
+				if (buildable) {
+					if (resource.spice >= 5) {
+						resource.spice -= 5;
+						buildings.push_back(make_Shelter(cursor.current.x, cursor.current.y, 2));
+						log_system_message("[은신처를 지었습니다.]");
+
+					}
+					else {
+						log_system_message("[스파이스가 부족합니다.]");
+					}
+				}
+				else {
+					log_system_message("[건설에 실패하였습니다.]");
+				}
+				build_mode = false;
+				cursor.cur_size = 1;
+			}
+		}
 		cursor.previous.x = cursor.current.x;
 		cursor.previous.y = cursor.current.y;
 		int building_index, unit_index;
@@ -198,7 +372,7 @@ int main(void) {
 				int index = 0;
 				random_shuffle(other_deltas.begin(), other_deltas.end()); //만약 내가 움직일 위치에 뭔가 있을 경우를 대비해서, 현재 방향 외에 다른 방향을 랜덤하게 고려하기 위해서 벡터를 랜덤하게 셔플
 
-				while ((building_in_next_pos > -1) || (unit_in_next_pos > -1)) { //만약 움직일 위치에 뭔가 있다면 다른 방향을 고려하기 시작
+				while ((index < 3) && ((building_in_next_pos > -1) || (unit_in_next_pos > -1))) { //만약 움직일 위치에 뭔가 있다면 다른 방향을 고려하기 시작
 					if ((units[i].repr == 'W') && (unit_in_next_pos > -1) && (units[unit_in_next_pos].repr == 'H')) { //만약 내가 샌드웜이고 다음으로 갈 위치에 하베스터가 있으면
 						units[unit_in_next_pos].destroyed = true; //하베스터를 units에서 지운다
 						break; //다른 방향을 고려하기를 그만둔다.
@@ -210,10 +384,10 @@ int main(void) {
 					index++;
 				}
 				if (units[i].repr == 'W') {
-					int W_excrement;
-					W_excrement = rand() % 20;
-					if (W_excrement == 1) {
-						buildings.push_back(make_Spice(units[i].pos.x, units[i].pos.y, rand() % 9 + 1)); 
+					int s_excrement;
+					s_excrement = rand() % 20;
+					if (s_excrement == 1) {
+						buildings.push_back(make_Spice(units[i].pos.x, units[i].pos.y, rand() % 5 + 1));
 					}
 				}
 				units[i].pos = { next_x, next_y }; //그리고 샌드웜을 (next_x, next_y)로 움직인다
@@ -223,7 +397,6 @@ int main(void) {
 		for (int i = units.size() - 1; i >= 0; i--) {
 			if (units[i].destroyed) {
 				units.erase(units.begin() + i);
-				log_system_message("샌드웜이 유닛을 씹어 먹었습니다.");
 			}
 		}
 
@@ -291,9 +464,13 @@ int main(void) {
 				selected_unit.repr = 0;
 			}
 			break;
+		case k_b:
+			log_console_message("P:Plate       D:Dormitory\n\nG:Garage      B:Barracks\n\nS:shelter");
+			break;
 		case k_esc:
 			log_status_message("");
-			log_console_message("");
+			log_console_message("B: Build");
+			cursor.cur_size = 1;
 			break;
 		case k_quit:
 			outro();
@@ -303,13 +480,17 @@ int main(void) {
 		default:
 			break;
 		}
-		if (!(1 <= cursor.current.y && cursor.current.y <= MAP_HEIGHT - 2 && 1 <= cursor.current.x && cursor.current.x <= MAP_WIDTH - 2)) {
-			cursor.current.x = max(min(cursor.current.x, MAP_WIDTH - 2), 1);
-			cursor.current.y = max(min(cursor.current.y, MAP_HEIGHT - 2), 1);
+		if (key != k_none && key != k_up && key != k_right && key != k_left && key != k_down) {
+			last_key = key;
+		}
+		if (!(1 <= cursor.current.y && cursor.current.y <= MAP_HEIGHT - 2 - (cursor.cur_size - 1) && 1 <= cursor.current.x && cursor.current.x <= MAP_WIDTH - 2 - (cursor.cur_size - 1))) {
+			cursor.current.x = max(min(cursor.current.x, MAP_WIDTH - 2 - (cursor.cur_size - 1)), 1);
+			cursor.current.y = max(min(cursor.current.y, MAP_HEIGHT - 2 - (cursor.cur_size - 1)), 1);
 		}
 
 		// 화면 출력
 		display(resource, buildings, units, cursor);
+		cursor.prev_size = cursor.cur_size;
 		Sleep(TICK);
 		sys_clock += 10;
 	}
@@ -362,6 +543,65 @@ BUILDING make_Rock(int x, int y, int size) {
 	Building.health = -1;
 	Building.status_msg = "그냥 돌인듯 하다.";
 	Building.console_msg = "";
+	return Building;
+}
+BUILDING make_Barracks(int x, int y, int size) {
+	BUILDING Building;
+	Building.pos = { x, y };
+	Building.size = size;
+	Building.color = (Color::DarkGreen << 4) + Color::Black;
+	Building.enemy = 2;
+	Building.repr = 'B';
+	Building.cost = 4;
+	Building.health = 20;
+	char temp[100];
+	snprintf(temp, sizeof(temp), "보병을 생산 할 수 있는 병영이다.\n[건설비용:% d 내구도 : % d]", Building.cost, Building.health);
+	Building.status_msg = temp;
+	Building.console_msg = "[보병 생산] S:Soldier";
+	return Building;
+
+}
+BUILDING make_Dormitory(int x, int y, int size) {
+	BUILDING Building;
+	Building.pos = { x, y };
+	Building.size = size;
+	Building.color = (Color::DarkGreen << 4) + Color::Black;
+	Building.enemy = 2;
+	Building.repr = 'D';
+	Building.cost = 2;
+	Building.health = 10;
+	char temp[100];
+	snprintf(temp, sizeof(temp), "인구 최대치를 증가시키는 숙소이다.\n[건설비용:%d 내구도:%d]", Building.cost, Building.health);
+	Building.status_msg = temp;
+	return Building;
+}
+BUILDING make_Garage(int x, int y, int size) {
+	BUILDING Building;
+	Building.pos = { x, y };
+	Building.size = size;
+	Building.color = (Color::DarkGreen << 4) + Color::Black;
+	Building.enemy = 2;
+	Building.repr = 'G';
+	Building.cost = 4;
+	Building.health = 10;
+	char temp[100];
+	snprintf(temp, sizeof(temp), "스파이스 보관 최대치를 증가시키는 창고이다.\n[건설비용:%d 내구도:%d]", Building.cost, Building.health);
+	Building.status_msg = temp;
+	return Building;
+}
+BUILDING make_Shelter(int x, int y, int size) {
+	BUILDING Building;
+	Building.pos = { x, y };
+	Building.size = size;
+	Building.color = (Color::DarkGreen << 4) + Color::Black;
+	Building.enemy = 2;
+	Building.repr = 'S';
+	Building.cost = 5;
+	Building.health = 30;
+	char temp[100];
+	snprintf(temp, sizeof(temp), "특수유닛을 생산 할 수 있는 쉘터이다\n[건설비용:%d  내구도:%d]", Building.cost, Building.health);
+	Building.status_msg = temp;
+	Building.console_msg = "[프레멘 생산] F:Fremen";
 	return Building;
 }
 BUILDING make_Spice(int x, int y, int reserves) {
