@@ -17,8 +17,8 @@ CURSOR cursor = { {1, 1}, {1, 1}, 1, 1 };
 RESOURCE resource = {
 	15,
 	50,
-	0,
-	0,
+	1,
+	5,
 };
 BUILDING make_Spice(int x, int y, int reserves);
 vector<BUILDING> buildings;
@@ -106,12 +106,12 @@ int find_closest_unit(int x, int y, bool perfect_match) {
 		return minimum_index;
 	}
 }
-void on_command_Base(KEY key);
 BUILDING make_Plate(int x, int y, int size);
 BUILDING make_Dormitory(int x, int y, int size);
 BUILDING make_Garage(int x, int y, int size);
 BUILDING make_Barracks(int x, int y, int size);
 BUILDING make_Shelter(int x, int y, int size);
+UNIT make_Haverster(int x, int y, bool is_enemy);
 /* ================= main() =================== */
 int main(void) {
 	RECT r;
@@ -126,18 +126,52 @@ int main(void) {
 	initialize_display();
 	display(resource, buildings, units, cursor);
 
-	BUILDING selected_building;
-	selected_building.repr = 0;
-	UNIT selected_unit;
-	selected_unit.repr = 0;
-	int click_b = 0;
+	BUILDING nothing;
+	nothing.repr = 0;
+	BUILDING* selected_building = &nothing;
+	UNIT nothing2;
+	nothing2.repr = 0;
+	UNIT* selected_unit = &nothing2;
 	KEY last_key = k_none;
 	bool build_mode = false;
+	UNIT* selected_harvester = nullptr;
 	log_console_message("B: Build");
 	while (1) {
 		KEY key = get_key();
-		if ((selected_building.repr == 'B') && (selected_building.enemy == 0)) {
-			on_command_Base(key);
+		if (((*selected_building).repr == 'B') && ((*selected_building).enemy == 0)) {	//아군 B가 선택 됐을때, 눌린 키가 h라면  
+			if (key == k_h) {
+				if (resource.spice < 5) {
+					log_system_message("Not enough spice");
+				}
+				else {
+					bool is_havester_exist[MAP_WIDTH] = { false, };
+					for (int i = 0; i < units.size(); i++) {
+						if ((units[i].repr == 'H') && (units[i].enemy == 0)) {
+							is_havester_exist[units[i].pos.x] = true;
+						}
+					}
+					for (int i = 1; i < MAP_WIDTH - 1; i++) {
+						if (is_havester_exist[i] == false) {
+							log_system_message("A new harvester ready");
+							units.push_back(make_Haverster(i, MAP_HEIGHT - 4, false));
+							resource.spice -= 5;
+							if (resource.population_max < 6) resource.population += 1;
+							else log_system_message("수용 가능한 인구수를 초과 하였습니다.");
+							break;
+						}
+					}
+				}
+			}
+		}
+		if (((*selected_unit).repr == 'H') && ((*selected_unit).enemy == 0)) {
+			if (key == k_h) {
+				selected_harvester = selected_unit; //하베스터가 선택되었음을 표시
+				log_system_message("매장지를 선택해주세요.");
+			}
+		}
+		if ((selected_harvester != nullptr) && ((*selected_building).repr > '0' && (*selected_building).repr <= '9')) { //(선택된 하베스터가 있고) && (선택된 유닛이 스파이스 매장지라면)
+			(*selected_harvester).dest = (*selected_building).pos; //하베스터의 목적지를 스파이스 매장지로
+			selected_harvester = nullptr; //하베스터 선택 해제
 		}
 		if (last_key == k_b) {
 			if (key == k_p) {
@@ -207,7 +241,7 @@ int main(void) {
 						resource.spice -= 2;
 						buildings.push_back(make_Dormitory(cursor.current.x, cursor.current.y, 2));
 						log_system_message("[숙소를 지었습니다.]");
-
+						resource.population_max += 10;
 					}
 					else {
 						log_system_message("[스파이스가 부족합니다.]");
@@ -375,7 +409,22 @@ int main(void) {
 				while ((index < 3) && ((building_in_next_pos > -1) || (unit_in_next_pos > -1))) { //만약 움직일 위치에 뭔가 있다면 다른 방향을 고려하기 시작
 					if ((units[i].repr == 'W') && (unit_in_next_pos > -1) && (units[unit_in_next_pos].repr == 'H')) { //만약 내가 샌드웜이고 다음으로 갈 위치에 하베스터가 있으면
 						units[unit_in_next_pos].destroyed = true; //하베스터를 units에서 지운다
+						if (selected_harvester == &units[unit_in_next_pos]) selected_harvester = nullptr;
+						log_system_message("유닛이 샌드웜에게 잡아먹혔습니다.");
 						break; //다른 방향을 고려하기를 그만둔다.
+					}
+					if ((units[i].repr == 'H') && (building_in_next_pos > -1) && (buildings[building_in_next_pos].repr > '0') && (buildings[building_in_next_pos].repr <= '9')) {
+						int mining_spice = rand() % 3 + 2;
+						if (buildings[building_in_next_pos].repr > mining_spice + '0') {
+							buildings[building_in_next_pos].repr -= mining_spice;
+							resource.spice += mining_spice;
+							if (resource.spice > resource.spice_max) resource.spice = resource.spice_max;
+						}
+						else {
+							resource.spice += buildings[building_in_next_pos].repr - '0';
+							buildings.erase(buildings.begin() + building_in_next_pos);
+						}
+						break;
 					}
 					next_x = units[i].pos.x + other_deltas[index].x; //만약 하베스터 외의 유닛이나 빌딩이 있으면, next_x, next_y를 다른 랜덤한 방향으로 바꾸고
 					next_y = units[i].pos.y + other_deltas[index].y;
@@ -447,26 +496,25 @@ int main(void) {
 			if (building_index >= 0) {
 				BUILDING current_building = buildings[building_index];
 				log_status_message(current_building.status_msg);
-				selected_building = current_building;
+				selected_building = &buildings[building_index];
 				log_console_message(current_building.console_msg);
 			}
 			else if (unit_index >= 0) {
 				UNIT current_unit = units[unit_index];
 				log_status_message(current_unit.status_msg);
-				selected_unit = current_unit;
+				selected_unit = &units[unit_index];
 				log_console_message(current_unit.console_msg);
 			}
 			else {
 				log_status_message("적막함만이 맴돌고 있는 사막이다.");
-				selected_building = {};
-				selected_unit = {};
-				selected_building.repr = 0;
-				selected_unit.repr = 0;
+				selected_building = &nothing;
+				selected_unit = &nothing2;
 			}
 			break;
 		case k_b:
 			log_console_message("P:Plate       D:Dormitory\n\nG:Garage      B:Barracks\n\nS:shelter");
 			break;
+
 		case k_esc:
 			log_status_message("");
 			log_console_message("B: Build");
@@ -555,7 +603,7 @@ BUILDING make_Barracks(int x, int y, int size) {
 	Building.cost = 4;
 	Building.health = 20;
 	char temp[100];
-	snprintf(temp, sizeof(temp), "보병을 생산 할 수 있는 병영이다.\n[건설비용:% d 내구도 : % d]", Building.cost, Building.health);
+	snprintf(temp, sizeof(temp), "보병을 생산 할 수 있는 병영이다.\n[건설비용:%d 내구도 : %d]", Building.cost, Building.health);
 	Building.status_msg = temp;
 	Building.console_msg = "[보병 생산] S:Soldier";
 	return Building;
@@ -625,7 +673,7 @@ UNIT make_Sandworm(int x, int y) {
 	Unit.population = -1;
 	Unit.health = -1;
 	Unit.fov = -1;
-	Unit.speed = 1000;
+	Unit.speed = 2500;
 	Unit.attack_speed = 10000;
 	Unit.last_moved_time = 0;
 	Unit.destroyed = false;
@@ -649,9 +697,16 @@ UNIT make_Haverster(int x, int y, bool is_enemy) {
 	else {
 		Unit.color = (Color::Blue << 4) + Color::White;
 		Unit.enemy = 0;
-		Unit.status_msg = "아트레이디스의 하베스터이다.";
 		Unit.console_msg = " H: Harvest(수확), M: move(이동)";
 		Unit.last_moved_time = 0;
+		Unit.cost = 5;
+		Unit.population = 1;
+		Unit.speed = 2000;
+		Unit.health = 70;
+		Unit.fov = 0;
+		char temp[100];
+		snprintf(temp, sizeof(temp), "아트레이더스의 하베스터이다.\n[생산비용:%d , 인구수:%d , 체력:%d]", Unit.cost, Unit.population, Unit.health);
+		Unit.status_msg = temp;
 		Unit.destroyed = false;
 
 	}
@@ -679,30 +734,6 @@ void init() {
 	units.push_back(make_Haverster(1, MAP_HEIGHT - 4, false));
 	units.push_back(make_Haverster(MAP_WIDTH - 2, 3, true));
 }
-void on_command_Base(KEY key) {
-	if (key == k_h) {
-		if (resource.spice < 5) {
-			log_system_message("Not enough spice");
-		}
-		else {
-			bool is_havester_exist[MAP_WIDTH] = { false, };
-			for (int i = 0; i < units.size(); i++) {
-				if ((units[i].repr == 'H') && (units[i].enemy == 0)) {
-					is_havester_exist[units[i].pos.x] = true;
-				}
-			}
-			for (int i = 1; i < MAP_WIDTH - 1; i++) {
-				if (is_havester_exist[i] == false) {
-					log_system_message("A new harvester ready");
-					units.push_back(make_Haverster(i, MAP_HEIGHT - 4, false));
-					resource.spice -= 5;
-					break;
-				}
-			}
-		}
-	}
-}
-
 /* ================= subfunctions =================== */
 void intro(void) {
 	system("color 0f");

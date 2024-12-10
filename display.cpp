@@ -107,11 +107,15 @@ bool initialized = false;
 void draw_resource(RESOURCE resource) {
 	char buf[CONSOLE_WIDTH] = { 0 };
 	snprintf(buf, CONSOLE_WIDTH, "spice = %d/%d, population=%d/%d",
-		resource.spice, resource.spice_max,
-		resource.population, resource.population_max
+		resource.spice, resource.spice_max, resource.population, resource.population_max
 	);
 	for (int i = 0; i < CONSOLE_WIDTH; i++) {
-		back_buffer[RESOURCE_POS.y][RESOURCE_POS.x + i] = { buf[i], Color::White };
+		if (buf[i] == 0) {
+			back_buffer[RESOURCE_POS.y][RESOURCE_POS.x + i] = { ' ', Color::White };
+		}
+		else {
+			back_buffer[RESOURCE_POS.y][RESOURCE_POS.x + i] = { buf[i], Color::White };
+		}
 	}
 }
 void display(

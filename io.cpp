@@ -21,6 +21,7 @@ KEY get_key(void) {
 	case 'g': return k_g;
 	case 's': return k_s;
 	case 'p': return k_p;
+	case 'm': return k_m;
 	case 224:
 		byte = _getch();  // MSB 224가 입력 되면 1바이트 더 전달 받기
 		switch (byte) {

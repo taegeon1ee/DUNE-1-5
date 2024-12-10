@@ -45,6 +45,8 @@ typedef enum {
 	k_s, // s 입력
 	k_p, // p 입력
 	k_g, // g 입력
+	k_m,
+
 } KEY;
 
 
